@@ -9,7 +9,7 @@ context.scale(24, 24);
 // New Canvas elements for the Next Piece Preview
 const nextCanvas = document.getElementById('nextCanvas');
 const nextContext = nextCanvas.getContext('2d');
-nextContext.scale(24, 24); // Scale is the same, but canvas is smaller (5x5 grid)
+nextContext.scale(24, 24);
 
 // Hold piece canvas
 const holdCanvas = document.getElementById('holdCanvas');
@@ -19,23 +19,21 @@ holdContext.scale(24, 24);
 // Game configuration constants
 const ARENA_WIDTH = 10;
 const ARENA_HEIGHT = 20;
-const INITIAL_DROP_INTERVAL = 1000;  // ms between piece drops
-const MIN_DROP_INTERVAL = 100;       // ms - fastest possible drop speed
-const LEVEL_SPEED_INCREMENT = 100;   // ms faster per level
-const LINES_PER_LEVEL = 10;          // lines cleared to advance level
+const INITIAL_DROP_INTERVAL = 1000;
+const MIN_DROP_INTERVAL = 100;
+const LEVEL_SPEED_INCREMENT = 100;
+const LINES_PER_LEVEL = 10;
 
 // Tetris piece shapes and colors
 const SHAPES = 'ILJOTSZ';
 const COLORS = [
     null,
-    '#FF0D72', '#0DC2FF', '#0DFF72',  // I, L, J
-    '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'  // O, Z, S, T
+    '#FF0D72', '#0DC2FF', '#0DFF72',
+    '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'
 ];
 
-// Scoring constants
-const LINE_SCORES = [0, 40, 100, 300, 1200];  // Points for 0-4 lines cleared
+const LINE_SCORES = [0, 40, 100, 300, 1200];
 
-// Create the game arena
 const arena = createMatrix(ARENA_WIDTH, ARENA_HEIGHT);
 
 // ============================================
@@ -50,12 +48,13 @@ let isPaused = false;
 let gameOver = false;
 let highScore = localStorage.getItem('tetrisHighScore') || 0;
 let currentTheme = localStorage.getItem('tetrisTheme') || 'dark';
+let gameOverSoundPlayed = false;
 
 const player = {
     pos: {x: 0, y: 0},
     matrix: null,
-    nextMatrix: null,    // Holds the upcoming piece
-    holdMatrix: null     // Holds the stored piece
+    nextMatrix: null,
+    holdMatrix: null
 };
 
 // ============================================
@@ -64,9 +63,6 @@ const player = {
 
 /**
  * Creates an empty matrix (2D array) with specified dimensions
- * @param {number} w - Width (columns)
- * @param {number} h - Height (rows)
- * @returns {Array<Array>} 2D array filled with zeros
  */
 function createMatrix(w, h) {
     const matrix = [];
@@ -76,9 +72,6 @@ function createMatrix(w, h) {
 
 /**
  * Creates a Tetris piece matrix based on type
- * Each piece is represented by a 2D array with numbers 1-7
- * @param {string} type - One of 'I', 'L', 'J', 'O', 'Z', 'S', 'T'
- * @returns {Array<Array>} 2D array representing the piece
  */
 function createPiece(type) {
     if (type === 'I') return [[0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]];
@@ -92,7 +85,6 @@ function createPiece(type) {
 
 /**
  * Returns a random Tetris piece
- * @returns {Array<Array>} Random piece matrix
  */
 function getRandomPiece() {
     const randomIndex = Math.floor(Math.random() * SHAPES.length);
@@ -105,15 +97,11 @@ function getRandomPiece() {
 
 /**
  * Checks if the current piece collides with the arena or other pieces
- * @param {Array<Array>} arena - The game board
- * @param {Object} player - Player object with matrix and pos
- * @returns {boolean} True if collision detected
  */
 function collide(arena, player) {
     const [m, o] = [player.matrix, player.pos];
     for (let y = 0; y < m.length; ++y) {
         for (let x = 0; x < m[y].length; ++x) {
-            // Check if piece cell is not empty AND arena cell at that position is occupied
             if (m[y][x] !== 0 &&
                (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
                 return true;
@@ -125,8 +113,6 @@ function collide(arena, player) {
 
 /**
  * Merges the current piece into the arena permanently
- * @param {Array<Array>} arena - The game board
- * @param {Object} player - Player object with matrix and pos
  */
 function merge(arena, player) {
     player.matrix.forEach((row, y) => {
@@ -140,11 +126,26 @@ function merge(arena, player) {
 
 /**
  * Deep copies a piece matrix
- * @param {Array<Array>} matrix - The piece to copy
- * @returns {Array<Array>} A new independent copy
  */
 function copyMatrix(matrix) {
     return matrix.map(row => [...row]);
+}
+
+/**
+ * Calculate the ghost piece (preview of final position)
+ */
+function getGhostPiecePos() {
+    const ghostPlayer = {
+        pos: {x: player.pos.x, y: player.pos.y},
+        matrix: player.matrix
+    };
+    
+    while (!collide(arena, ghostPlayer)) {
+        ghostPlayer.pos.y++;
+    }
+    ghostPlayer.pos.y--;
+    
+    return ghostPlayer.pos;
 }
 
 // ============================================
@@ -152,45 +153,123 @@ function copyMatrix(matrix) {
 // ============================================
 
 /**
- * Universal draw function that works for both main and preview canvases
- * Renders a matrix (piece or arena) to a specified canvas context
- * @param {Array<Array>} matrix - 2D array to draw
- * @param {Object} offset - {x, y} position offset
- * @param {CanvasRenderingContext2D} ctx - Canvas context to draw to
+ * Draw a single block with 3D effect and grid
  */
-function drawMatrix(matrix, offset, ctx) {
+function drawBlock(ctx, x, y, colorIndex) {
+    const color = COLORS[colorIndex];
+    if (!color) return;
+    
+    // Main block
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, 1, 1);
+    
+    // Grid lines (darker outline)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = 0.05;
+    ctx.strokeRect(x, y, 1, 1);
+    
+    // 3D effect - highlight
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 0.04;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 0.9, y);
+    ctx.lineTo(x + 0.9, y + 0.1);
+    ctx.stroke();
+    
+    // 3D effect - shadow
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.lineWidth = 0.04;
+    ctx.beginPath();
+    ctx.moveTo(x + 1, y + 1);
+    ctx.lineTo(x + 0.1, y + 1);
+    ctx.lineTo(x + 0.1, y + 0.1);
+    ctx.stroke();
+}
+
+/**
+ * Universal draw function - renders a matrix to canvas with texture
+ */
+function drawMatrix(matrix, offset, ctx, isGhost = false) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
-                ctx.fillStyle = COLORS[value];
-                ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+                const xPos = x + offset.x;
+                const yPos = y + offset.y;
+                
+                if (isGhost) {
+                    // Ghost piece - semi-transparent with just outline
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 0.08;
+                    ctx.strokeRect(xPos, yPos, 1, 1);
+                } else {
+                    // Regular piece with texture
+                    drawBlock(ctx, xPos, yPos, value);
+                }
             }
         });
     });
 }
 
 /**
- * Main draw function - renders arena, current piece, and previews
+ * Draw grid on the arena
+ */
+function drawGrid() {
+    context.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    context.lineWidth = 0.02;
+    
+    // Vertical lines
+    for (let x = 0; x <= ARENA_WIDTH; x++) {
+        context.beginPath();
+        context.moveTo(x, 0);
+        context.lineTo(x, ARENA_HEIGHT);
+        context.stroke();
+    }
+    
+    // Horizontal lines
+    for (let y = 0; y <= ARENA_HEIGHT; y++) {
+        context.beginPath();
+        context.moveTo(0, y);
+        context.lineTo(ARENA_WIDTH, y);
+        context.stroke();
+    }
+}
+
+/**
+ * Main draw function - renders arena, current piece, ghost piece, and previews
  */
 function draw() {
     // Clear and draw main game arena
     context.fillStyle = '#111';
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT);
+    
+    // Draw grid
+    drawGrid();
+    
+    // Draw placed blocks
     drawMatrix(arena, {x: 0, y: 0}, context);
+    
+    // Draw ghost piece (preview of final position)
+    if (player.matrix) {
+        const ghostPos = getGhostPiecePos();
+        drawMatrix(player.matrix, ghostPos, context, true);
+    }
+    
+    // Draw current falling piece
     drawMatrix(player.matrix, player.pos, context);
 
-    // Clear and draw next piece preview (centered in 5x5 grid)
+    // Clear and draw next piece preview
     nextContext.fillStyle = '#111';
-    nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+    nextContext.fillRect(0, 0, 5, 5);
     if (player.nextMatrix) {
         const pX = (5 - player.nextMatrix[0].length) / 2;
         const pY = (5 - player.nextMatrix.length) / 2;
         drawMatrix(player.nextMatrix, {x: pX, y: pY}, nextContext);
     }
 
-    // Clear and draw hold piece preview (centered in 5x5 grid)
+    // Clear and draw hold piece preview
     holdContext.fillStyle = '#111';
-    holdContext.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
+    holdContext.fillRect(0, 0, 5, 5);
     if (player.holdMatrix) {
         const hX = (5 - player.holdMatrix[0].length) / 2;
         const hY = (5 - player.holdMatrix.length) / 2;
@@ -204,55 +283,53 @@ function draw() {
 
 /**
  * Scans the arena for complete rows and removes them
- * Updates score, lines, and level accordingly
- * Implements classic Tetris scoring: 40, 100, 300, 1200 points
  */
 function arenaSweep() {
     let rowCount = 0;
     outer: for (let y = arena.length - 1; y >= 0; --y) {
         for (let x = 0; x < arena[y].length; ++x) {
             if (arena[y][x] === 0) {
-                continue outer;  // Row not complete, skip to next row
+                continue outer;
             }
         }
-        // Row is complete - remove it and add empty row at top
         const row = arena.splice(y, 1)[0].fill(0);
         arena.unshift(row);
-        ++y;  // Check the same y position again (new row moved down)
+        ++y;
         rowCount++;
     }
 
     if (rowCount > 0) {
         lines += rowCount;
-        
-        // Apply score multiplier based on level
         score += LINE_SCORES[rowCount] * level;
-        
-        // Level up every LINES_PER_LEVEL lines cleared
         level = Math.floor(lines / LINES_PER_LEVEL) + 1;
-        
-        // Increase difficulty - make pieces drop faster (capped at MIN_DROP_INTERVAL)
         dropInterval = Math.max(MIN_DROP_INTERVAL, INITIAL_DROP_INTERVAL - (level - 1) * LEVEL_SPEED_INCREMENT);
         
-        // Play sound effect
         playSound('clear');
     }
 }
 
 /**
  * Moves the current piece left or right
- * @param {number} dir - Direction: -1 for left, 1 for right
  */
 function playerMove(dir) {
     player.pos.x += dir;
     if (collide(arena, player)) {
-        player.pos.x -= dir;  // Undo move if collision detected
+        player.pos.x -= dir;
     }
 }
 
 /**
- * Drops the current piece one row
- * When piece can't drop further, merge it and spawn new piece
+ * Hard drop - instantly place piece at bottom
+ */
+function playerHardDrop() {
+    while (!collide(arena, {matrix: player.matrix, pos: {x: player.pos.x, y: player.pos.y + 1}})) {
+        player.pos.y++;
+    }
+    playerDrop();
+}
+
+/**
+ * Soft drop - drops the piece one row
  */
 function playerDrop() {
     player.pos.y++;
@@ -267,22 +344,18 @@ function playerDrop() {
 }
 
 /**
- * Swaps current piece with held piece (classic Tetris mechanic)
- * Can only hold once per piece drop
+ * Swaps current piece with held piece
  */
 function playerHold() {
-    // Swap current matrix with hold matrix
     const temp = player.matrix;
     player.matrix = player.holdMatrix;
     player.holdMatrix = temp;
     
-    // If no held piece existed, use next piece instead
     if (player.matrix === null) {
         player.matrix = player.nextMatrix;
         player.nextMatrix = getRandomPiece();
     }
     
-    // Reset piece position to top-center
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
     
@@ -291,19 +364,16 @@ function playerHold() {
 
 /**
  * Rotates the current piece with wall kick support
- * Wall kick allows rotation to succeed even at edges by nudging the piece
- * @param {number} dir - Rotation direction: -1 for CCW, 1 for CW
  */
 function playerRotate(dir) {
     const pos = player.pos.x;
     let offset = 1;
     rotate(player.matrix, dir);
-    // Wall kick - try different horizontal positions if collision detected
     while (collide(arena, player)) {
         player.pos.x += offset;
         offset = -(offset + (offset > 0 ? 1 : -1));
         if (offset > player.matrix[0].length) {
-            rotate(player.matrix, -dir);  // Undo rotation if can't find valid position
+            rotate(player.matrix, -dir);
             player.pos.x = pos;
             return;
         }
@@ -312,20 +382,14 @@ function playerRotate(dir) {
 }
 
 /**
- * Rotates a piece matrix 90 degrees in the specified direction
- * CCW (dir < 0): transpose then reverse each row
- * CW (dir > 0): reverse then transpose
- * @param {Array<Array>} matrix - The piece to rotate
- * @param {number} dir - Rotation direction
+ * Rotates a piece matrix 90 degrees
  */
 function rotate(matrix, dir) {
-    // Transpose matrix
     for (let y = 0; y < matrix.length; ++y) {
         for (let x = 0; x < y; ++x) {
             [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
         }
     }
-    // Reverse rows for clockwise, reverse entire matrix for counter-clockwise
     if (dir > 0) {
         matrix.forEach(row => row.reverse());
     } else {
@@ -335,25 +399,18 @@ function rotate(matrix, dir) {
 
 /**
  * Resets player piece to starting state
- * Spawns new piece at top-center of arena
- * Triggers game over if piece immediately collides
  */
 function playerReset() {
-    // Initialize next piece if it doesn't exist yet (first game start)
     if (!player.nextMatrix) {
         player.nextMatrix = getRandomPiece();
     }
 
-    // Current piece becomes the next piece
     player.matrix = player.nextMatrix;
-    // Roll a new upcoming piece
     player.nextMatrix = getRandomPiece();
     
-    // Position new piece at top-center
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
     
-    // Check for game over - if new piece immediately collides at spawn point
     if (collide(arena, player)) {
         triggerGameOver();
     }
@@ -375,15 +432,14 @@ function togglePause() {
  */
 function triggerGameOver() {
     gameOver = true;
+    gameOverSoundPlayed = false;  // Reset flag so sound plays once
     playSound('gameOver');
     
-    // Update high score
     if (score > highScore) {
         highScore = score;
         localStorage.setItem('tetrisHighScore', highScore);
     }
     
-    // Show game over modal
     showGameOverModal();
 }
 
@@ -392,7 +448,7 @@ function triggerGameOver() {
 // ============================================
 
 /**
- * Updates all on-screen statistics (score, level, lines, high score)
+ * Updates all on-screen statistics
  */
 function updateStats() {
     document.getElementById('score').innerText = score;
@@ -402,7 +458,7 @@ function updateStats() {
 }
 
 /**
- * Displays game over modal with final stats and restart option
+ * Displays game over modal
  */
 function showGameOverModal() {
     const modal = document.getElementById('gameOverModal');
@@ -423,6 +479,7 @@ function resetGame() {
     level = 1;
     dropInterval = INITIAL_DROP_INTERVAL;
     gameOver = false;
+    gameOverSoundPlayed = false;
     isPaused = false;
     player.nextMatrix = null;
     player.holdMatrix = null;
@@ -434,7 +491,7 @@ function resetGame() {
 }
 
 /**
- * Cycles through available themes and saves to localStorage
+ * Cycles through available themes
  */
 function changeTheme() {
     const themes = ['dark', 'light', 'neon'];
@@ -445,7 +502,7 @@ function changeTheme() {
 }
 
 /**
- * Applies the current theme to the page
+ * Applies the current theme
  */
 function applyTheme() {
     document.body.setAttribute('data-theme', currentTheme);
@@ -456,19 +513,21 @@ function applyTheme() {
 // ============================================
 
 /**
- * Plays a sound effect (using Web Audio API)
- * @param {string} type - Type of sound: 'clear', 'rotate', 'hold', 'gameOver'
+ * Plays a sound effect using Web Audio API
  */
 function playSound(type) {
-    // Only play sounds if not muted
+    // Only play if not muted
     if (document.getElementById('soundToggle').checked === false) return;
+    
+    // Game over sound should only play once
+    if (type === 'gameOver' && gameOverSoundPlayed) return;
+    if (type === 'gameOver') gameOverSoundPlayed = true;
     
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const now = audioContext.currentTime;
         
         if (type === 'clear') {
-            // Ascending tone for line clear
             for (let i = 0; i < 4; i++) {
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
@@ -481,7 +540,6 @@ function playSound(type) {
                 osc.stop(now + (i * 0.1) + 0.1);
             }
         } else if (type === 'rotate') {
-            // Short beep for rotation
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
             osc.connect(gain);
@@ -492,7 +550,6 @@ function playSound(type) {
             osc.start(now);
             osc.stop(now + 0.05);
         } else if (type === 'hold') {
-            // Soft tone for hold
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
             osc.connect(gain);
@@ -503,7 +560,6 @@ function playSound(type) {
             osc.start(now);
             osc.stop(now + 0.08);
         } else if (type === 'gameOver') {
-            // Descending tone for game over
             for (let i = 0; i < 4; i++) {
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
@@ -517,7 +573,7 @@ function playSound(type) {
             }
         }
     } catch (e) {
-        // Audio context not available, silently fail
+        // Audio context not available
     }
 }
 
@@ -529,22 +585,18 @@ let dropCounter = 0;
 let lastTime = 0;
 
 /**
- * Main game loop called by requestAnimationFrame
- * Updates game state, checks for auto-drop, and renders
- * @param {number} time - Current timestamp in milliseconds
+ * Main game loop
  */
 function update(time = 0) {
     const deltaTime = time - lastTime;
     lastTime = time;
 
-    // Skip update if paused
     if (isPaused) {
         draw();
         requestAnimationFrame(update);
         return;
     }
 
-    // Auto-drop piece based on dropInterval
     dropCounter += deltaTime;
     if (dropCounter > dropInterval) {
         playerDrop();
@@ -555,12 +607,12 @@ function update(time = 0) {
 }
 
 /**
- * Keyboard input handler for game controls
+ * Keyboard input handler
  */
 document.addEventListener('keydown', event => {
-    if (gameOver) return;  // Ignore input when game is over
+    if (gameOver) return;
     
-    if (event.key === ' ') {
+    if (event.key === 'p' || event.key === 'P') {
         event.preventDefault();
         togglePause();
     } else if (!isPaused) {
@@ -570,18 +622,23 @@ document.addEventListener('keydown', event => {
             playerMove(1);
         } else if (event.key === 'ArrowDown') {
             playerDrop();
+        } else if (event.key === 'ArrowUp') {
+            playerRotate(1);  // Up arrow = clockwise rotate
         } else if (event.key.toLowerCase() === 'q') {
-            playerRotate(-1);  // Rotate counter-clockwise
+            playerRotate(-1);  // Q = counter-clockwise
         } else if (event.key.toLowerCase() === 'e') {
-            playerRotate(1);   // Rotate clockwise
+            playerRotate(1);   // E = clockwise
+        } else if (event.key === ' ') {
+            event.preventDefault();
+            playerHardDrop();  // Space = hard drop
         } else if (event.key.toLowerCase() === 'z') {
-            playerHold();      // Hold piece
+            playerHold();
         }
     }
 });
 
 /**
- * Mobile touch controls handler
+ * Mobile touch controls
  */
 let touchStartX = 0;
 document.addEventListener('touchstart', (e) => {
@@ -595,10 +652,10 @@ document.addEventListener('touchmove', (e) => {
     const diff = touchEndX - touchStartX;
     
     if (diff < -30) {
-        playerMove(-1);  // Swipe left
+        playerMove(-1);
         touchStartX = touchEndX;
     } else if (diff > 30) {
-        playerMove(1);   // Swipe right
+        playerMove(1);
         touchStartX = touchEndX;
     }
 }, false);
@@ -607,10 +664,7 @@ document.addEventListener('touchmove', (e) => {
 // INITIALIZATION
 // ============================================
 
-// Apply saved theme on startup
 applyTheme();
-
-// Start the game
 playerReset();
 updateStats();
 update();
