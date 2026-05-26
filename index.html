@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris with Preview & Levels</title>
+    <style>
+        body {
+            background: #202020;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .game-container {
+            display: flex;
+            gap: 20px;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        canvas {
+            border: 4px solid #444;
+            background: #111;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 120px;
+        }
+        .stat-box {
+            background: #111;
+            padding: 10px;
+            border: 2px solid #444;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        #nextCanvas {
+            background: #111;
+            border: 2px solid #444;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <canvas id="tetris" width="240" height="480"></canvas>
+        
+        <div class="sidebar">
+            <div>
+                <div class="stat-box">
+                    <div class="stat-label">Score</div>
+                    <div id="score" class="stat-value">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Level</div>
+                    <div id="level" class="stat-value">1</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Lines</div>
+                    <div id="lines" class="stat-value">0</div>
+                </div>
+            </div>
+            
+            <div>
+                <div class="stat-label" style="text-align: center; margin-bottom: 5px;">Next</div>
+                <canvas id="nextCanvas" width="120" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="tetris.js"></script>
+</body>
+</html>
