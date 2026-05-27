@@ -4,17 +4,54 @@
 
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
-context.scale(24, 24);
 
 // New Canvas elements for the Next Piece Preview
 const nextCanvas = document.getElementById('nextCanvas');
 const nextContext = nextCanvas.getContext('2d');
-nextContext.scale(24, 24);
 
 // Hold piece canvas
 const holdCanvas = document.getElementById('holdCanvas');
 const holdContext = holdCanvas.getContext('2d');
-holdContext.scale(24, 24);
+let cellSize = 24;
+
+/**
+ * Resize canvases to fit small screens crisply.
+ * Keeps drawing coordinates in "cell units" (1 unit = 1 cell).
+ */
+function resizeCanvases() {
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const isSmallScreen = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+
+    // Fit board to screen width on mobile, keep original size on desktop.
+    const horizontalPadding = isSmallScreen ? 32 : 0;
+    const maxBoardCssWidth = isSmallScreen ? Math.max(200, window.innerWidth - horizontalPadding) : 240;
+    cellSize = Math.max(14, Math.min(28, Math.floor(maxBoardCssWidth / ARENA_WIDTH)));
+
+    const boardCssW = cellSize * ARENA_WIDTH;
+    const boardCssH = cellSize * ARENA_HEIGHT;
+
+    canvas.style.width = `${boardCssW}px`;
+    canvas.style.height = `${boardCssH}px`;
+    canvas.width = Math.floor(boardCssW * dpr);
+    canvas.height = Math.floor(boardCssH * dpr);
+
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.scale(cellSize * dpr, cellSize * dpr);
+
+    // Previews are drawn in a 5x5 grid.
+    const previewCells = 5;
+    const previewCellSize = Math.max(10, Math.floor(cellSize * 0.8));
+    const previewCss = previewCellSize * previewCells;
+
+    for (const [c, ctx] of [[nextCanvas, nextContext], [holdCanvas, holdContext]]) {
+        c.style.width = `${previewCss}px`;
+        c.style.height = `${previewCss}px`;
+        c.width = Math.floor(previewCss * dpr);
+        c.height = Math.floor(previewCss * dpr);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(previewCellSize * dpr, previewCellSize * dpr);
+    }
+}
 
 // Game configuration constants
 const ARENA_WIDTH = 10;
@@ -651,16 +688,16 @@ document.addEventListener('keydown', event => {
  * Mobile touch controls
  */
 let touchStartX = 0;
-document.addEventListener('touchstart', (e) => {
+canvas.addEventListener('touchstart', (e) => {
     touchStartX = e.touches[0].clientX;
-});
+}, { passive: true });
 
-document.addEventListener('touchmove', (e) => {
+canvas.addEventListener('touchmove', (e) => {
     if (gameOver || isPaused) return;
     e.preventDefault();
     const touchEndX = e.touches[0].clientX;
     const diff = touchEndX - touchStartX;
-    
+
     if (diff < -30) {
         playerMove(-1);
         touchStartX = touchEndX;
@@ -668,13 +705,71 @@ document.addEventListener('touchmove', (e) => {
         playerMove(1);
         touchStartX = touchEndX;
     }
-}, false);
+}, { passive: false });
+
+/**
+ * Mobile on-screen buttons (move/rotate/drop/hard drop/hold).
+ */
+function bindMobileButtons() {
+    const safeAction = (fn) => {
+        if (gameOver || isPaused) return;
+        fn();
+    };
+
+    const bindTap = (id, fn) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            safeAction(fn);
+        });
+    };
+
+    const bindHoldRepeat = (id, fn, intervalMs = 80, initialDelayMs = 120) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        let timeoutId = null;
+        let intervalId = null;
+
+        const clearTimers = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (intervalId) clearInterval(intervalId);
+            timeoutId = null;
+            intervalId = null;
+        };
+
+        el.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            safeAction(fn);
+            clearTimers();
+            timeoutId = setTimeout(() => {
+                intervalId = setInterval(() => safeAction(fn), intervalMs);
+            }, initialDelayMs);
+        });
+
+        el.addEventListener('pointerup', clearTimers);
+        el.addEventListener('pointercancel', clearTimers);
+        el.addEventListener('pointerleave', clearTimers);
+    };
+
+    bindHoldRepeat('btnLeft', () => playerMove(-1));
+    bindHoldRepeat('btnRight', () => playerMove(1));
+    bindTap('btnRotate', () => playerRotate(1));
+    bindHoldRepeat('btnDown', () => playerDrop(), 70, 120);
+    bindTap('btnHardDrop', () => playerHardDrop());
+    bindTap('btnHold', () => playerHold());
+}
 
 // ============================================
 // INITIALIZATION
 // ============================================
 
 applyTheme();
+resizeCanvases();
+window.addEventListener('resize', resizeCanvases);
+window.addEventListener('orientationchange', resizeCanvases);
+bindMobileButtons();
 playerReset();
 updateStats();
 update();
