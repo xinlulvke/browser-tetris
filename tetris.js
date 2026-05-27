@@ -332,6 +332,7 @@ function playerHardDrop() {
  * Soft drop - drops the piece one row
  */
 function playerDrop() {
+    if (gameOver) return;
     player.pos.y++;
     if (collide(arena, player)) {
         player.pos.y--;
@@ -413,6 +414,7 @@ function playerReset() {
     
     if (collide(arena, player)) {
         triggerGameOver();
+        return;
     }
 }
 
@@ -486,8 +488,11 @@ function resetGame() {
     document.getElementById('gameOverModal').style.display = 'none';
     document.getElementById('pauseBtn').innerText = 'Pause';
     document.getElementById('pauseOverlay').style.display = 'none';
+    dropCounter = 0;
+    lastTime = 0;
     playerReset();
     updateStats();
+    update();
 }
 
 /**
@@ -590,6 +595,11 @@ let lastTime = 0;
 function update(time = 0) {
     const deltaTime = time - lastTime;
     lastTime = time;
+
+    if (gameOver) {
+        draw();
+        return;
+    }
 
     if (isPaused) {
         draw();
