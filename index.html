@@ -296,26 +296,6 @@
             height: fit-content;
         }
 
-        .mobile-controls {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-
-        .mobile-controls .button {
-            padding: 14px 10px;
-            min-width: 0;
-            text-align: center;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
-
-        .mobile-controls .button.wide {
-            grid-column: span 2;
-        }
-
         .button {
             padding: 12px 20px;
             background: #333;
@@ -513,6 +493,60 @@
         }
 
         /* ============================================
+           MODE PICKER
+           ============================================ */
+
+        #modeModal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1100;
+        }
+
+        .mode-modal-content {
+            background: #2a2a2a;
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 24px;
+            width: min(92vw, 420px);
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .mode-modal-content h2 {
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .mode-modal-content p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .mode-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .mode-actions .button {
+            flex: 1;
+        }
+
+        body[data-theme="light"] .mode-modal-content {
+            background: #f0f0f0;
+            border-color: #999;
+            color: #000;
+        }
+
+        body[data-theme="neon"] .mode-modal-content {
+            background: #1a1f3a;
+            border-color: #00ff41;
+        }
+
+        /* ============================================
            RESPONSIVE DESIGN
            ============================================ */
 
@@ -581,15 +615,6 @@
                 min-width: 100px;
             }
 
-            .mobile-controls {
-                width: 100%;
-                grid-template-columns: repeat(4, 1fr);
-            }
-
-            .mobile-controls .button {
-                min-width: 0;
-            }
-
             canvas {
                 max-width: 100%;
                 height: auto;
@@ -640,17 +665,6 @@
                 </div>
             </div>
 
-            <div class="instructions-box">
-                <div class="instructions-title">📱 MOBILE</div>
-                <div class="controls-list">
-                    <div class="control-item">
-                        <span class="control-key">Swipe</span> Move Left/Right
-                    </div>
-                    <div class="control-item">
-                        Use buttons below for actions
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- CENTER CONTENT -->
@@ -697,17 +711,6 @@
 
                 <!-- CONTROL PANEL -->
                 <div class="control-panel">
-                    <!-- Mobile gameplay controls -->
-                    <div class="mobile-controls" aria-label="Mobile controls">
-                        <button id="btnLeft" class="button" type="button" aria-label="Move left">⬅️</button>
-                        <button id="btnRight" class="button" type="button" aria-label="Move right">➡️</button>
-                        <button id="btnRotate" class="button" type="button" aria-label="Rotate">⤾</button>
-                        <button id="btnHold" class="button" type="button" aria-label="Hold piece">📦</button>
-
-                        <button id="btnDown" class="button wide" type="button" aria-label="Soft drop">⬇️ Drop</button>
-                        <button id="btnHardDrop" class="button wide" type="button" aria-label="Hard drop">⏬ Hard</button>
-                    </div>
-
                     <button id="pauseBtn" class="button">⏸️ Pause</button>
                     <button class="button" onclick="changeTheme()">🎨 Theme</button>
                     <button class="button" onclick="resetGame()">🔄 New Game</button>
@@ -752,6 +755,18 @@
 
     <!-- PAUSE OVERLAY -->
     <div id="pauseOverlay">⏸️ PAUSED</div>
+
+    <!-- MODE SELECTOR -->
+    <div id="modeModal">
+        <div class="mode-modal-content">
+            <h2>Choose Your Device</h2>
+            <p>Pick how you want to play Tetris.</p>
+            <div class="mode-actions">
+                <button id="desktopModeBtn" class="button" type="button">🖥️ Desktop</button>
+                <button id="mobileModeBtn" class="button" type="button">📱 Mobile</button>
+            </div>
+        </div>
+    </div>
 
     <script src="tetris.js"></script>
 

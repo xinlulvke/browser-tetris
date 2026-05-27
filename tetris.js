@@ -13,6 +13,8 @@ const nextContext = nextCanvas.getContext('2d');
 const holdCanvas = document.getElementById('holdCanvas');
 const holdContext = holdCanvas.getContext('2d');
 let cellSize = 24;
+let gameMode = null;
+let lastTapTime = 0;
 
 /**
  * Resize canvases to fit small screens crisply.
@@ -20,11 +22,11 @@ let cellSize = 24;
  */
 function resizeCanvases() {
     const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const isSmallScreen = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+    const isSmallScreen = gameMode === 'mobile' || (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
 
-    // Fit board to screen width on mobile, keep original size on desktop.
+    // Fit board to screen width on mobile, use larger board on desktop.
     const horizontalPadding = isSmallScreen ? 32 : 0;
-    const maxBoardCssWidth = isSmallScreen ? Math.max(200, window.innerWidth - horizontalPadding) : 240;
+    const maxBoardCssWidth = isSmallScreen ? Math.max(220, window.innerWidth - horizontalPadding) : 300;
     cellSize = Math.max(14, Math.min(28, Math.floor(maxBoardCssWidth / ARENA_WIDTH)));
 
     const boardCssW = cellSize * ARENA_WIDTH;
@@ -83,6 +85,7 @@ let level = 1;
 let dropInterval = INITIAL_DROP_INTERVAL;
 let isPaused = false;
 let gameOver = false;
+let gameStarted = false;
 let highScore = localStorage.getItem('tetrisHighScore') || 0;
 let currentTheme = localStorage.getItem('tetrisTheme') || 'dark';
 let gameOverSoundPlayed = false;
@@ -633,6 +636,12 @@ function update(time = 0) {
     const deltaTime = time - lastTime;
     lastTime = time;
 
+    if (!gameStarted) {
+        draw();
+        requestAnimationFrame(update);
+        return;
+    }
+
     if (gameOver) {
         draw();
         return;
@@ -684,81 +693,70 @@ document.addEventListener('keydown', event => {
     }
 });
 
-/**
- * Mobile touch controls
- */
 let touchStartX = 0;
+let touchStartY = 0;
+
+/**
+ * Mobile gesture controls (active only in mobile mode):
+ * swipe left/right = move, swipe down = soft drop, swipe up = hard drop,
+ * tap = rotate, double tap = hold.
+ */
 canvas.addEventListener('touchstart', (e) => {
+    if (gameMode !== 'mobile') return;
     touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
 }, { passive: true });
 
-canvas.addEventListener('touchmove', (e) => {
-    if (gameOver || isPaused) return;
-    e.preventDefault();
-    const touchEndX = e.touches[0].clientX;
-    const diff = touchEndX - touchStartX;
+canvas.addEventListener('touchend', (e) => {
+    if (gameMode !== 'mobile' || gameOver || isPaused) return;
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - touchStartX;
+    const diffY = touch.clientY - touchStartY;
+    const absX = Math.abs(diffX);
+    const absY = Math.abs(diffY);
+    const now = Date.now();
+    const isTap = absX < 12 && absY < 12;
 
-    if (diff < -30) {
-        playerMove(-1);
-        touchStartX = touchEndX;
-    } else if (diff > 30) {
-        playerMove(1);
-        touchStartX = touchEndX;
+    if (isTap) {
+        if (now - lastTapTime < 300) {
+            playerHold();
+            lastTapTime = 0;
+        } else {
+            playerRotate(1);
+            lastTapTime = now;
+        }
+        return;
     }
-}, { passive: false });
 
-/**
- * Mobile on-screen buttons (move/rotate/drop/hard drop/hold).
- */
-function bindMobileButtons() {
-    const safeAction = (fn) => {
-        if (gameOver || isPaused) return;
-        fn();
-    };
+    if (absX > absY) {
+        if (diffX > 24) playerMove(1);
+        if (diffX < -24) playerMove(-1);
+    } else {
+        if (diffY > 24) playerDrop();
+        if (diffY < -24) playerHardDrop();
+    }
+}, { passive: true });
 
-    const bindTap = (id, fn) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            safeAction(fn);
-        });
-    };
+function setGameMode(mode) {
+    gameMode = mode;
+    gameStarted = true;
+    document.body.setAttribute('data-mode', mode);
+    const modal = document.getElementById('modeModal');
+    if (modal) modal.style.display = 'none';
+    resizeCanvases();
+    update();
+}
 
-    const bindHoldRepeat = (id, fn, intervalMs = 80, initialDelayMs = 120) => {
-        const el = document.getElementById(id);
-        if (!el) return;
+function setupModeSelector() {
+    const desktopBtn = document.getElementById('desktopModeBtn');
+    const mobileBtn = document.getElementById('mobileModeBtn');
+    if (!desktopBtn || !mobileBtn) {
+        setGameMode('desktop');
+        return;
+    }
 
-        let timeoutId = null;
-        let intervalId = null;
-
-        const clearTimers = () => {
-            if (timeoutId) clearTimeout(timeoutId);
-            if (intervalId) clearInterval(intervalId);
-            timeoutId = null;
-            intervalId = null;
-        };
-
-        el.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            safeAction(fn);
-            clearTimers();
-            timeoutId = setTimeout(() => {
-                intervalId = setInterval(() => safeAction(fn), intervalMs);
-            }, initialDelayMs);
-        });
-
-        el.addEventListener('pointerup', clearTimers);
-        el.addEventListener('pointercancel', clearTimers);
-        el.addEventListener('pointerleave', clearTimers);
-    };
-
-    bindHoldRepeat('btnLeft', () => playerMove(-1));
-    bindHoldRepeat('btnRight', () => playerMove(1));
-    bindTap('btnRotate', () => playerRotate(1));
-    bindHoldRepeat('btnDown', () => playerDrop(), 70, 120);
-    bindTap('btnHardDrop', () => playerHardDrop());
-    bindTap('btnHold', () => playerHold());
+    desktopBtn.addEventListener('click', () => setGameMode('desktop'));
+    mobileBtn.addEventListener('click', () => setGameMode('mobile'));
 }
 
 // ============================================
@@ -769,7 +767,7 @@ applyTheme();
 resizeCanvases();
 window.addEventListener('resize', resizeCanvases);
 window.addEventListener('orientationchange', resizeCanvases);
-bindMobileButtons();
+setupModeSelector();
 playerReset();
 updateStats();
 update();
