@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris - Browser Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ============================================
+           PREVENT SCROLLING
+           ============================================ */
+        html, body {
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ============================================
+           THEME STYLES
+           ============================================ */
+
+        body[data-theme="dark"] {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        body[data-theme="light"] {
+            background: #f0f0f0;
+            color: #000;
+        }
+
+        body[data-theme="neon"] {
+            background: #0a0e27;
+            color: #00ff41;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 10px 16px 16px 16px;
+        }
+
+        /* ============================================
+           MAIN PAGE LAYOUT
+           ============================================ */
+
+        .page-container {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* ============================================
+           LEFT SIDEBAR - INSTRUCTIONS
+           ============================================ */
+
+        .instructions-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 220px;
+            min-width: 220px;
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        .instructions-box {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            flex-shrink: 0;
+        }
+
+        body[data-theme="light"] .instructions-box {
+            background: #e8e8e8;
+            border-color: #999;
+        }
+
+        body[data-theme="neon"] .instructions-box {
+            background: #1a1f3a;
+            border-color: #00ff41;
+        }
+
+        .instructions-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        body[data-theme="neon"] .instructions-title {
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .controls-list {
+            font-size: 0.85em;
+            line-height: 1.8;
+        }
+
+        .control-item {
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .control-key {
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        body[data-theme="light"] .control-key {
+            color: #0066cc;
+        }
+
+        body[data-theme="neon"] .control-key {
+            color: #ffff00;
+            text-shadow: 0 0 3px #ffff00;
+        }
+
+        /* ============================================
+           TITLE
+           ============================================ */
+
+        h1 {
+            font-size: 2em;
+            position: fixed;
+            top: 12px;
+            left: 16px;
+            transform: none;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        /* ============================================
+           CENTER CONTENT WRAPPER
+           ============================================ */
+
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            height: 100%;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        /* ============================================
+           MAIN GAME CONTAINER
+           ============================================ */
+
+        .game-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 16px;
+            background: #2a2a2a;
+            padding: 16px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: auto;
+        }
+
+        body[data-theme="light"] .game-container {
+            background: #e8e8e8;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        body[data-theme="neon"] .game-container {
+            background: #1a1f3a;
+            border: 2px solid #00ff41;
+        }
+
+        canvas {
+            border: 4px solid #444;
+            background: #111;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        body[data-theme="light"] canvas {
+            border-color: #999;
+            background: #f5f5f5;
+        }
+
+        body[data-theme="neon"] canvas {
+            border-color: #00ff41;
+            background: #0a0e27;
+        }
+
+        /* ============================================
+           SIDEBAR - STATS & PREVIEWS
+           ============================================ */
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 140px;
+            height: auto;
+            overflow: visible;
+        }
+
+        .stat-box {
+            background: #111;
+            padding: 10px 8px;
+            border: 2px solid #444;
+            border-radius: 5px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        body[data-theme="light"] .stat-box {
+            background: #f5f5f5;
+            border-color: #999;
+            color: #000;
+        }
+
+        body[data-theme="neon"] .stat-box {
+            background: #1a1f3a;
+            border-color: #00ff41;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+
+        body[data-theme="light"] .stat-label {
+            color: #666;
+        }
+
+        body[data-theme="neon"] .stat-label {
+            color: #00ff41;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        body[data-theme="neon"] .stat-value {
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .preview-canvas {
+            background: #111;
+            border: 2px solid #444;
+            border-radius: 5px;
+            width: 100%;
+            height: 120px;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        body[data-theme="light"] .preview-canvas {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+
+        body[data-theme="neon"] .preview-canvas {
+            background: #0a0e27;
+            border-color: #00ff41;
+        }
+
+        /* ============================================
+           CONTROL PANEL
+           ============================================ */
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 150px;
+            height: fit-content;
+        }
+
+        .button {
+            padding: 12px 20px;
+            background: #333;
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            background: #444;
+            border-color: #777;
+        }
+
+        body[data-theme="light"] .button {
+            background: #ddd;
+            color: #000;
+            border-color: #999;
+        }
+
+        body[data-theme="light"] .button:hover {
+            background: #ccc;
+        }
+
+        body[data-theme="neon"] .button {
+            background: transparent;
+            color: #00ff41;
+            border-color: #00ff41;
+        }
+
+        body[data-theme="neon"] .button:hover {
+            background: #00ff41;
+            color: #0a0e27;
+            text-shadow: none;
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        /* ============================================
+           CHECKBOX & TOGGLE STYLES
+           ============================================ */
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+
+        body[data-theme="light"] .toggle-group {
+            background: #e8e8e8;
+        }
+
+        body[data-theme="neon"] .toggle-group {
+            background: #1a1f3a;
+            border: 1px solid #00ff41;
+        }
+
+        .toggle-group label {
+            font-size: 0.9em;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .toggle-group input[type="checkbox"] {
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+        }
+
+        /* ============================================
+           MODALS
+           ============================================ */
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2a2a2a;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+            max-width: 400px;
+        }
+
+        body[data-theme="light"] .modal-content {
+            background: #f0f0f0;
+            color: #000;
+        }
+
+        body[data-theme="neon"] .modal-content {
+            background: #1a1f3a;
+            border: 2px solid #00ff41;
+        }
+
+        .modal h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .modal-stat {
+            margin: 15px 0;
+            font-size: 1.2em;
+        }
+
+        .modal-label {
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+
+        .modal-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        body[data-theme="neon"] .modal-value {
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .modal-buttons .button {
+            flex: 1;
+        }
+
+        .new-high-score {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.3em;
+            margin: 20px 0;
+            animation: pulse 1s infinite;
+        }
+
+        body[data-theme="neon"] .new-high-score {
+            color: #ffff00;
+            text-shadow: 0 0 10px #ffff00;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* ============================================
+           PAUSE OVERLAY
+           ============================================ */
+
+        #pauseOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        body[data-theme="neon"] #pauseOverlay {
+            background: rgba(0, 255, 65, 0.1);
+            text-shadow: 0 0 20px #00ff41;
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN
+           ============================================ */
+
+        @media (max-width: 1024px) {
+            .page-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .instructions-panel {
+                width: 100%;
+                max-width: 600px;
+            }
+
+            h1 {
+                position: fixed;
+                top: 12px;
+                left: 16px;
+                transform: none;
+                margin-bottom: 0;
+            }
+
+            .center-content {
+                margin-top: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .game-wrapper {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .game-container {
+                width: 100%;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .sidebar {
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                height: auto;
+                max-height: none;
+                overflow: visible;
+            }
+
+            .stat-box {
+                flex: 1;
+                min-width: 80px;
+            }
+
+            .control-panel {
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .button {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+
+            .instructions-panel {
+                order: -1;
+                margin-bottom: 20px;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <!-- TITLE -->
+    <h1>🎮 TETRIS</h1>
+
+    <!-- MAIN PAGE CONTAINER -->
+    <div class="page-container">
+
+        <!-- LEFT SIDEBAR - INSTRUCTIONS -->
+        <div class="instructions-panel">
+            <div class="instructions-box">
+                <div class="instructions-title">🎮 CONTROLS</div>
+                <div class="controls-list">
+                    <div class="control-item">
+                        <span class="control-key">⬅️ ➡️</span> Move
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">SPACE</span> Hard Drop
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">⬇️</span> Soft Drop
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">⬆️</span> Rotate CW
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">Q/E</span> Rotate
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">Z</span> Hold Piece
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">P</span> Pause
+                    </div>
+                </div>
+            </div>
+
+            <div class="instructions-box">
+                <div class="instructions-title">📱 MOBILE</div>
+                <div class="controls-list">
+                    <div class="control-item">
+                        <span class="control-key">Swipe</span> Move Left/Right
+                    </div>
+                    <div class="control-item">
+                        Use buttons below for actions
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER CONTENT -->
+        <div class="center-content">
+            <!-- GAME AREA -->
+            <div class="game-wrapper">
+                <div class="game-container">
+                    <canvas id="tetris" width="240" height="480"></canvas>
+                    
+                    <!-- SIDEBAR - Stats & Previews -->
+                    <div class="sidebar">
+                        <!-- Stats Section -->
+                        <div>
+                            <div class="stat-box">
+                                <div class="stat-label">Score</div>
+                                <div id="score" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">High Score</div>
+                                <div id="highScore" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Level</div>
+                                <div id="level" class="stat-value">1</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Lines</div>
+                                <div id="lines" class="stat-value">0</div>
+                            </div>
+                        </div>
+
+                        <!-- Preview Canvases -->
+                        <div>
+                            <div class="stat-label" style="text-align: center; margin-bottom: 8px;">Next</div>
+                            <canvas id="nextCanvas" class="preview-canvas" width="120" height="120"></canvas>
+                        </div>
+
+                        <div>
+                            <div class="stat-label" style="text-align: center; margin-bottom: 8px;">Hold</div>
+                            <canvas id="holdCanvas" class="preview-canvas" width="120" height="120"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTROL PANEL -->
+                <div class="control-panel">
+                    <button id="pauseBtn" class="button">⏸️ Pause</button>
+                    <button class="button" onclick="changeTheme()">🎨 Theme</button>
+                    <button class="button" onclick="resetGame()">🔄 New Game</button>
+
+                    <div class="toggle-group">
+                        <label for="soundToggle">🔊 Sound</label>
+                        <input type="checkbox" id="soundToggle" checked>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- GAME OVER MODAL -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            
+            <div class="modal-stat">
+                <div class="modal-label">Final Score</div>
+                <div id="finalScore" class="modal-value">0</div>
+            </div>
+
+            <div class="modal-stat">
+                <div class="modal-label">Level Reached</div>
+                <div id="finalLevel" class="modal-value">1</div>
+            </div>
+
+            <div class="modal-stat">
+                <div class="modal-label">Lines Cleared</div>
+                <div id="finalLines" class="modal-value">0</div>
+            </div>
+
+            <div id="isNewHighScore" class="new-high-score"></div>
+
+            <div class="modal-buttons">
+                <button class="button" onclick="resetGame()">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pauseOverlay">⏸️ PAUSED</div>
+
+    <script src="tetris.js"></script>
+
+    <!-- Add pause button functionality -->
+    <script>
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+    </script>
+
+</body>
+</html>
