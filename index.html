@@ -42,9 +42,9 @@
         body {
             font-family: 'Courier New', Courier, monospace;
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
-            padding: 10px 16px 16px 16px;
+            padding: 20px;
         }
 
         /* ============================================
@@ -53,7 +53,7 @@
 
         .page-container {
             display: flex;
-            gap: 24px;
+            gap: 30px;
             align-items: flex-start;
             height: 100%;
             overflow: hidden;
@@ -134,11 +134,10 @@
 
         h1 {
             font-size: 2em;
-            position: fixed;
-            top: 12px;
-            left: 16px;
-            transform: none;
-            z-index: 10;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
         }
 
@@ -150,10 +149,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 30px;
             height: 100%;
             overflow: hidden;
-            margin-top: 20px;
+            margin-top: 60px;
         }
 
         /* ============================================
@@ -162,7 +161,7 @@
 
         .game-wrapper {
             display: flex;
-            gap: 20px;
+            gap: 30px;
             align-items: flex-start;
             height: 100%;
             overflow: hidden;
@@ -170,12 +169,12 @@
 
         .game-container {
             display: flex;
-            gap: 16px;
+            gap: 20px;
             background: #2a2a2a;
-            padding: 16px;
+            padding: 20px;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            height: auto;
+            height: 100%;
         }
 
         body[data-theme="light"] .game-container {
@@ -212,15 +211,15 @@
         .sidebar {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            width: 140px;
-            height: auto;
-            overflow: visible;
+            gap: 20px;
+            width: 150px;
+            height: 100%;
+            overflow-y: auto;
         }
 
         .stat-box {
             background: #111;
-            padding: 10px 8px;
+            padding: 15px;
             border: 2px solid #444;
             border-radius: 5px;
             text-align: center;
@@ -242,7 +241,7 @@
             font-size: 11px;
             color: #888;
             text-transform: uppercase;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             letter-spacing: 1px;
         }
 
@@ -255,7 +254,7 @@
         }
 
         .stat-value {
-            font-size: 22px;
+            font-size: 28px;
             font-weight: bold;
         }
 
@@ -508,11 +507,9 @@
             }
 
             h1 {
-                position: fixed;
-                top: 12px;
-                left: 16px;
+                position: static;
                 transform: none;
-                margin-bottom: 0;
+                margin-bottom: 20px;
             }
 
             .center-content {
@@ -542,7 +539,6 @@
                 flex-wrap: wrap;
                 height: auto;
                 max-height: none;
-                overflow: visible;
             }
 
             .stat-box {
@@ -619,6 +615,24 @@
                     </div>
                     <div class="control-item">
                         Use buttons below for actions
+                    </div>
+                </div>
+            </div>
+
+            <div class="instructions-box">
+                <div class="instructions-title">⭐ TIPS</div>
+                <div class="controls-list">
+                    <div class="control-item">
+                        Watch the <span class="control-key">Next</span> preview
+                    </div>
+                    <div class="control-item">
+                        Use <span class="control-key">Hold</span> strategically
+                    </div>
+                    <div class="control-item">
+                        Ghost preview shows final position
+                    </div>
+                    <div class="control-item">
+                        Clear 4 lines for big points!
                     </div>
                 </div>
             </div>
